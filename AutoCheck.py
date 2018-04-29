@@ -275,10 +275,11 @@ class AutoCheck:
                 # sys.exit(0)
             for i in range(page_size):
                 billing_no = self.b.find_element_by_xpath('//*[@id="pageTable"]/div['+str(i+2)+']/table/tbody/tr/td[1]/p[2]').text.split('：')[-1]
-                if self.b.find_element_by_xpath('//*[@id="pageTable"]/div['+str(i+2)+']/table/tbody/tr/td[2]/p').text == '王卡亲情卡':
+                if self.b.find_element_by_xpath('//*[@id="pageTable"]/div['+str(i+2)+']/table/tbody/tr/td[2]/p').text in ['王卡亲情卡','商城冰激凌']:
+                    text = self.b.find_element_by_xpath('//*[@id="pageTable"]/div['+str(i+2)+']/table/tbody/tr/td[2]/p').text
                     tencent_qinqing = open(write_path + '不合格单号.txt', 'a')
-                    tencent_qinqing.write(billing_no + ' 王卡亲情卡 '+'\n')
-                    print(billing_no+'为： 王卡亲情卡')
+                    tencent_qinqing.write(billing_no + text +'\n')
+                    print(billing_no+'为：'+text)
                     tencent_qinqing.close()
                     continue
                 identity_path = identity_base + billing_no + '.jpg'

@@ -13,6 +13,7 @@ import winreg
 def error_repeat(func):
     def inner(self, *args, **kwargs):
         try:
+            self.invalid_record = []
             func(self, *args, **kwargs)
         except Exception as e:
             print(e)
@@ -80,11 +81,9 @@ def keyword_isin(keywords, addr):
 
 
 def get_map_count(districts, addr):
-    # print(districts)
     true_dict = {}
     addr_map_count = {'area': []}
     for k in districts.keys():
-        # print(keyword_isin(districts[k],addr))
         true_dict[k] = keyword_isin(districts[k], addr)
         if True in true_dict[k]:
             addr_map_count['area'].append(k)
@@ -186,7 +185,7 @@ class AutoDistrbute:
         Select(page_size).select_by_value("20")
         time.sleep(1)
 
-    def select_all(self,file,code,all_district):
+    def select_all(self, file, code, all_district):
         name = file[1] if code in ['140882'] else all_district[code]
         while self.element_isexist_xpath_shrot_time(
                 '//*[@id="pageTable"]/tbody/tr/td/table[2]/tbody/tr/td/div[1]/table/tbody/tr/td[1]/input'):
@@ -203,13 +202,12 @@ class AutoDistrbute:
 
     def test(self, district_dict, distribute_dir='', district_name=''):
         self.rowth = 0
+        time.sleep(2)
         table = WebDriverWait(self.b, 3, 0.5).until(EC.presence_of_element_located((By.XPATH, '//*[@id="pageTable"]/tbody/tr/td/table[2]')))
         write_list = []
-        # print('HERE')
         while self.element_isexist_xpath_shrot_time('//*[@id="pageTable"]/tbody/tr/td/table[2]/tbody/tr/td/div[' + str(
                         self.rowth + 1) + ']/table/tbody/tr/td[4]/table/tbody/tr[3]/td'):
             self.click_or_not = False
-            # print('opiqwuerowq')
             if self.rowth >= 19:
                 self.rowth = 0
                 temp = self.b.find_element_by_xpath(
@@ -234,7 +232,7 @@ class AutoDistrbute:
                 scheduled_no = self.b.find_element_by_xpath(
                     '//*[@id="pageTable"]/tbody/tr/td/table[2]/tbody/tr/td/div[' + str(
                         self.rowth + 1) + ']/table/tbody/tr/td[4]/table/tbody/tr[2]/td').text.split('(')[0]
-                # print(billing_no, commodity, scheduled_no, addr_orgin)
+
                 write_list.append(billing_no + ' ' + commodity + ' ' + scheduled_no + ' ' + addr_orgin + '\n')
                 time.sleep(0.8)
                 if billing_no not in self.invalid_record:
@@ -280,9 +278,11 @@ class AutoDistrbute:
                 orgin_rowth = self.rowth
                 changed_i = self.click_confirm(addr_map['area'][0],distribute_dir,district_name,write_list)
                 print(changed_i, orgin_rowth)
-                if changed_i != orgin_rowth:
+                if changed_i is not None and changed_i != orgin_rowth:
                     self.rowth = 0
                     continue
+                elif changed_i == 'noclicked':
+                    break
                 self.rowth = 0
             else:
                 self.rowth += 1
@@ -296,7 +296,6 @@ class AutoDistrbute:
         WebDriverWait(self.b, 60, 0.5).until(EC.element_to_be_clickable((
             By.XPATH, '//*[@id="pageTable"]/tbody/tr/td/table[3]/tbody/tr/td/input[3]')))
         distribute = self.b.find_element_by_xpath('//*[@id="pageTable"]/tbody/tr/td/table[3]/tbody/tr/td/input[3]')
-        print(self.click_or_not)
         if self.click_or_not is True:
             self.b.execute_script("arguments[0].click();", distribute)
             self.is_not_visible('thickdiv')
@@ -324,13 +323,15 @@ class AutoDistrbute:
                     self.b.switch_to.default_content()
                     self.is_not_visible('thickdiv')
                     WebDriverWait(self.b, 30, 0.5).until(EC.frame_to_be_available_and_switch_to_it((By.ID, 'main')))
-                    if distribute_dir != '' and district_name != ''and write_list != []:
+                    if distribute_dir != '' and district_name != '':
                         distribute_record = open(distribute_dir + '/' + district_name + '.txt', 'a')
                         for record in set(write_list):
                             distribute_record.write(record)
                         distribute_record.write('以上订单将要派给：' + input_name + ',但'+input_name+"没有开接单。")
                         write_list.clear()
                         distribute_record.close()
+                    if write_list!=[]:
+                        write_list.clear()
                     time.sleep(1.5)
                     self.rowth += 1
                     return self.rowth
@@ -343,7 +344,6 @@ class AutoDistrbute:
                 ).text
                 tel = self.b.find_element_by_xpath('//*[@id="showDespatcherPage"]/tbody/tr/td/table[2]/tbody/tr/td/div/ul/li[1]/div[2]/span[1]').text
 
-                # print(name, tel, input_name)
                 while input_name not in name and tel not in input_name:
                     WebDriverWait(self.b, 30, 0.5).until(EC.presence_of_element_located((By.ID, 'searchText')))
                     input_text = self.b.find_element_by_id("searchText")
@@ -360,14 +360,14 @@ class AutoDistrbute:
                 self.b.execute_script("arguments[0].click();", temp)
 
                 finished = len(write_list)
-                if distribute_dir != '' and district_name != '' and write_list != []:
+                if distribute_dir != '' and district_name != '':
                     distribute_record = open(distribute_dir + '/' + district_name + '.txt', 'a')
                     for record in set(write_list):
                         distribute_record.write(record)
                     distribute_record.write('以上订单派给了：'+name + '\n\n')
-                    write_list.clear()
                     distribute_record.close()
-
+                if write_list!=[]:
+                    write_list.clear()
                 for i in range(finished):
                     self.invalid_record.pop()
 
@@ -382,6 +382,8 @@ class AutoDistrbute:
                 self.is_not_visible('thickdiv')
                 WebDriverWait(self.b, 30, 0.5).until(EC.frame_to_be_available_and_switch_to_it((By.ID, 'main')))
                 time.sleep(1)
+        else:
+            return 'noclicked'
 
     def process_district(self):
         all_district = self.get_district_code()
@@ -398,8 +400,6 @@ class AutoDistrbute:
             if file[0].endswith('.xlsx'):
                 district_dict = read_file(file[0])
                 district_name = file[0].split('/')[-1].split('.')[0] if file[0].find('/') else file[0].split('\\')[-1].split('.')[0]
-                print('sdfdsf')
-                print(district_dict)
                 self.test(district_dict, distribute_dir, district_name)
                 if code == '140802':
                     self.b.find_element_by_xpath('/html/body/table/tbody/tr[2]/td[6]/input[1]').click()
@@ -425,5 +425,4 @@ if __name__ == "__main__":
     auto.before_distribute()
     auto.main_process()
     auto.b.quit()
-
 
