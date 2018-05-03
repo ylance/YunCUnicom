@@ -1,4 +1,4 @@
-from selenium import webdriver
+﻿from selenium import webdriver
 from recevie_email import get_email_code
 from selenium.webdriver.support.select import Select
 from selenium.webdriver.support.wait import WebDriverWait
@@ -8,6 +8,22 @@ from selenium.common.exceptions import TimeoutException
 import time, datetime
 import os
 import winreg
+import smtplib
+from email.header import Header
+from email.mime.text import MIMEText
+
+
+def send_email2(SMTP_host, from_account, from_passwd, to_account, subject, content):
+    email_client = smtplib.SMTP(SMTP_host)
+    email_client.login(from_account, from_passwd)
+    # create msg
+    msg = MIMEText(content, 'plain', 'utf-8')
+    msg['Subject'] = Header(subject, 'utf-8')  # subject
+    msg['From'] = from_account
+    msg['To'] = to_account
+    email_client.sendmail(from_account, to_account, msg.as_string())
+
+    email_client.quit()
 
 
 def error_repeat(func):
@@ -107,7 +123,7 @@ class AutoDistrbute:
             '140822': '卫颖',
             '140823': '陈萍',
             '140824': '杨英兰',
-            '140825': '程燕',
+            '140825': [self.base_dir + '/运城订单分配区域/新绛.xlsx','程燕'],
             '140826': '高密脂',
             '140827': '王娟',
             '140828': '屈霞',
@@ -148,9 +164,9 @@ class AutoDistrbute:
     def login(self):
         # 登陆开始
         WebDriverWait(self.b, 60, 0.5).until(EC.presence_of_element_located((By.ID, "merchantId")))
-        self.b.find_element_by_id("merchantId").send_keys('SXYC0044')
+        self.b.find_element_by_id("merchantId").send_keys('SXYC0032')
         WebDriverWait(self.b, 60, 0.5).until(EC.presence_of_element_located((By.ID, "merchantPwd")))
-        self.b.find_element_by_id("merchantPwd").send_keys('wangning123')
+        self.b.find_element_by_id("merchantPwd").send_keys('jiahuan123+')
 
         # todo 短信验证码开始
         WebDriverWait(self.b, 60, 0.5).until(EC.presence_of_element_located((By.ID, "phone")))
@@ -186,7 +202,7 @@ class AutoDistrbute:
         time.sleep(1)
 
     def select_all(self, file, code, all_district):
-        name = file[1] if code in ['140882'] else all_district[code]
+        name = file[1] if code in ['140882','140825'] else all_district[code]
         while self.element_isexist_xpath_shrot_time(
                 '//*[@id="pageTable"]/tbody/tr/td/table[2]/tbody/tr/td/div[1]/table/tbody/tr/td[1]/input'):
             select_all = self.b.find_element_by_class_name("selectAll")
@@ -278,10 +294,10 @@ class AutoDistrbute:
                 orgin_rowth = self.rowth
                 changed_i = self.click_confirm(addr_map['area'][0],distribute_dir,district_name,write_list)
                 print(changed_i, orgin_rowth)
-                if changed_i is not None and changed_i != orgin_rowth:
+                if isinstance(changed_i, int) and changed_i != orgin_rowth:
                     self.rowth = 0
                     continue
-                elif changed_i == 'noclicked':
+                elif isinstance(changed_i, str):
                     break
                 self.rowth = 0
             else:
@@ -296,12 +312,15 @@ class AutoDistrbute:
         WebDriverWait(self.b, 60, 0.5).until(EC.element_to_be_clickable((
             By.XPATH, '//*[@id="pageTable"]/tbody/tr/td/table[3]/tbody/tr/td/input[3]')))
         distribute = self.b.find_element_by_xpath('//*[@id="pageTable"]/tbody/tr/td/table[3]/tbody/tr/td/input[3]')
+        finished = len(set(write_list))
         if self.click_or_not is True:
             self.b.execute_script("arguments[0].click();", distribute)
             self.is_not_visible('thickdiv')
             self.b.switch_to.default_content()
 
             if self.element_isexist_xpath_shrot_time('//*[@id="pop_div"]'):
+                for i in range(finished):
+                    self.invalid_record.pop()
                 self.b.find_element_by_xpath('//*[@id="pop_comfirm"]').click()
                 self.is_not_visible('thickdiv')
                 WebDriverWait(self.b, 30, 0.5).until(EC.frame_to_be_available_and_switch_to_it((By.ID, 'main')))
@@ -327,7 +346,7 @@ class AutoDistrbute:
                         distribute_record = open(distribute_dir + '/' + district_name + '.txt', 'a')
                         for record in set(write_list):
                             distribute_record.write(record)
-                        distribute_record.write('以上订单将要派给：' + input_name + ',但'+input_name+"没有开接单。")
+                        distribute_record.write('以上订单将要派给：' + input_name + ',但'+input_name+"没有开接单。\n\n")
                         write_list.clear()
                         distribute_record.close()
                     if write_list!=[]:
@@ -353,13 +372,14 @@ class AutoDistrbute:
                     self.b.find_element_by_id("searchBtn").click()
                     self.is_not_visible('modal')
                     time.sleep(2)
+                    WebDriverWait(self.b, 30, 0.5).until(EC.presence_of_element_located((By.XPATH, '//table[@id="showDespatcherPage"]/tbody/tr/td/table[2]/tbody/tr/td/div/ul/li[1]/div[1]')))
                     name = self.b.find_element_by_xpath(
                         '//table[@id="showDespatcherPage"]/tbody/tr/td/table[2]/tbody/tr/td/div/ul/li[1]/div[1]').text
                     tel = self.b.find_element_by_xpath(
                         '//*[@id="showDespatcherPage"]/tbody/tr/td/table[2]/tbody/tr/td/div/ul/li[1]/div[2]/span[1]').text
+
                 self.b.execute_script("arguments[0].click();", temp)
 
-                finished = len(write_list)
                 if distribute_dir != '' and district_name != '':
                     distribute_record = open(distribute_dir + '/' + district_name + '.txt', 'a')
                     for record in set(write_list):
@@ -372,6 +392,7 @@ class AutoDistrbute:
                     self.invalid_record.pop()
 
                 time.sleep(1)
+                WebDriverWait(self.b, 30, 0.5).until(EC.presence_of_element_located((By.CLASS_NAME, 'sureRelease')))
                 self.b.find_element_by_class_name('sureRelease').click()
                 self.is_not_visible('thickdiv')
                 self.b.switch_to.default_content()
@@ -425,4 +446,3 @@ if __name__ == "__main__":
     auto.before_distribute()
     auto.main_process()
     auto.b.quit()
-
