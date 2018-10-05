@@ -27,8 +27,8 @@ def to_sha1_base64(stringToSign, secret):
 
 
 def face_contrast(identity_path, photo_path):
-    ak_id = 'LTAIT9HWbUSK2pvJ'
-    ak_secret = 'UvXMFF3zCeglGjQaS5CLEG7ujOBwaB'
+    ak_id = ''
+    ak_secret = ''
     # print(identity_path, photo_path)
     with open(identity_path, 'rb') as identity_card, open(photo_path, 'rb') as photo:
         content_1 = base64.b64encode(identity_card.read())
